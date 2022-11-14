@@ -1,0 +1,154 @@
+library(RoBMA)
+library(rjags)
+library(readr)
+library(ggplot2)
+library(dplyr)
+library(tidyverse)
+library(esc)
+library(BayesTools)
+#setwd
+
+
+both_groups <- read.csv("cancer_healthy_groups.csv")
+
+#determining standardised mean differences (SMDs)
+esc_mean_sd(grp1m = both_groups$Me, grp2m = both_groups$Mc, 
+            grp1sd = both_groups$Se, grp2sd = both_groups$Sc, 
+            grp1n = both_groups$Ne, grp2n = both_groups$Nc)
+
+
+#SMDs were manually exported to difference_effect_size.csv
+meta_data = read.csv('difference_effect_size.csv')
+
+
+#Comparing ITLN1 levels between healthy individuals and cancer patients in all included studies
+meta_1 <- RoBMA(d=meta_data$TE, 
+                se=meta_data$seTE,  
+                study_names = meta_data$Author,
+                seed = 2000)
+
+summary(meta_1, type = "ensemble") 
+summary(meta_1, type = "models") 
+summary(meta_1, type = "diagnostics") 
+summary(meta_1, type = "individual") 
+  
+RoBMA::interpret(meta_1)
+
+
+#Sensitivity analysis - the study by Shen et al. (2016) was excluded in order to analyse its impact on the overall meta-analysis
+
+sensitivity_data <- meta_data[-c(7), ]
+
+meta_sens <- RoBMA(d=sensitivity_data$TE, 
+                se=sensitivity_data$seTE,  
+                study_names = sensitivity_data$Author,
+                seed = 2000)
+
+summary(meta_sens, type = "ensemble") 
+summary(meta_sens, type = "models") 
+summary(meta_sens, type = "diagnostics") 
+summary(meta_sens, type = "individual") 
+
+RoBMA::interpret(meta_sens)
+
+
+#Subgroup analysis - gastrointestinal cancer patients versus healthy controls
+
+meta_gi = meta_data %>% filter (cancer_type == "Gastrointestinal")
+
+meta_2 <- RoBMA(d=meta_gi$TE, 
+            se=meta_gi$seTE,
+            study_names = meta_gi$Author,
+            seed = 2000)
+
+summary(meta_2, type = "ensemble") 
+summary(meta_2, type = "models") 
+summary(meta_2, type = "diagnostics") 
+summary(meta_2, type = "individual") 
+
+RoBMA::interpret(meta_2)
+
+
+#Subgroup analysis - patients with urological cancer versus healthy controls
+
+meta_uro = meta_data %>% filter (cancer_type == "Urological")
+
+meta_3 <- RoBMA(d=meta_uro$TE, 
+            se=meta_uro$seTE,
+            study_names = meta_uro$Author,
+            seed = 2000)
+
+summary(meta_3, type = "ensemble") 
+summary(meta_3, type = "models") 
+summary(meta_3, type = "diagnostics") 
+summary(meta_3, type = "individual") 
+
+RoBMA::interpret(meta_3)
+
+
+#Subgroup analysis - patients with breast cancer versus healthy controls
+
+meta_breast = meta_data %>% filter (cancer_type == "Breast")
+
+meta_4 <- RoBMA(d=meta_breast$TE, 
+            se=meta_breast$seTE,
+            study_names = meta_breast$Author,
+            seed = 2000)
+
+summary(meta_4, type = "ensemble") 
+summary(meta_4, type = "models") 
+summary(meta_4, type = "diagnostics") 
+summary(meta_4, type = "individual") 
+
+RoBMA::interpret(meta_4)
+
+
+#Subgroup analysis - analysing only high-quality studies (identified following the quality assessment)
+
+meta_hq = read.csv('difference_effect_sizes_hq.csv')
+hq_data = meta_hq %>% filter(quality == "high") 
+
+
+head(hq_data)
+
+meta_5 <- RoBMA(d=hq_data$TE, 
+            se=hq_data$seTE,
+            study_names = hq_data$Author,
+            seed = 2000)
+
+summary(meta_5, type = "ensemble") 
+summary(meta_5, type = "models") 
+summary(meta_5, type = "diagnostics") 
+summary(meta_4, type = "individual") 
+
+RoBMA::interpret(meta_5)
+
+
+#Robustness check - 3 studies measured ITLN1 levels in patients with urological cancer but did not include a (healthy) control group. 
+#We want to check if adding these studies to the subgroup examining urological cancer changes the results. 
+#For the control group, the average ITLN1 values from healthy individuals will be used (234ng/ml).
+
+both_groups_robust <- read.csv("cancer_healthy_groups_robustness_check.csv")
+
+esc_mean_sd(grp1m = both_groups_robust$Me, grp2m = both_groups_robust$Mc, 
+            grp1sd = both_groups_robust$Se, grp2sd = both_groups_robust$Sc, 
+            grp1n = both_groups_robust$Ne, grp2n = both_groups_robust$Nc)
+
+#After determining SMDs for the robustness check, we exported the data manually to "difference_effect_size_robustness_check.csv". 
+#Meta analysis - patients with urological cancer (with the added studies versus healthy controls 
+
+robust_data = read.csv("difference_effect_size_robustness_check.csv")
+
+robust_uro = robust_data %>% filter (cancer_type == "Urological")
+
+meta_robust <- RoBMA(d=robust_uro$TE, 
+                     se=robust_uro$seTE,
+                     study_names = robust_uro$Author,
+                     seed = 2000)
+
+summary(meta_robust, type = "ensemble") 
+summary(meta_robust, type = "models") 
+summary(meta_robust, type = "diagnostics") 
+summary(meta_robust, type = "individual") 
+
+RoBMA::interpret(meta_robust)
