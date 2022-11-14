@@ -1,0 +1,111 @@
+library(esc)
+library(tidyverse)
+library(brms)
+library(tidybayes)
+library(bayesplot)
+library(bayestestR)
+#setwd
+
+data_in <- read_csv('healthy_hope.csv')
+
+data_in$mean = as.numeric(data_in$mean)
+data_in$sd = as.numeric(data_in$sd)
+data_in$n = as.numeric(data_in$n)
+
+
+#Filtering resonable data (ITLN <1ng/ml is very difficult to measure and ITLN1>2000ng/ml is hyperphysiological)
+resonable_data = data_in %>% filter(mean < 2000 & mean > 1)
+
+#Determining ITLN1 levels in all studies that measured circulating ITLN1
+resonable_model <- brm(mean ~ 1,
+                       data = resonable_data, 
+                       family = gaussian, 
+                       sample_prior = TRUE,
+                       prior = c(prior(student_t(1,2.3,1), class = "Intercept")),
+                       chains = 4,
+                       iter = 3000,
+                       warmup = 500, 
+                       cores = 4)
+
+summary(resonable_model)
+
+
+#Analysing only high-quality data as per the quality assessment 
+hq_data = resonable_data %>% filter (assay_described == "Y" & collection_described == "Y")
+
+hq_model <- brm(mean ~ 1,
+                data = hq_data, 
+                family = gaussian, 
+                sample_prior = TRUE,
+                prior = prior(student_t(1,2.3,1), class = "Intercept"),
+                chains = 4,
+                iter = 3000,
+                warmup = 500, 
+                cores = 4)
+
+summary(hq_model)
+
+
+#Determining female ITLN1 concentration
+fem_data = resonable_data %>% filter (sex == "F")
+
+fem_model <- brm(mean ~ 1,
+                 data = fem_data, 
+                 family = gaussian, 
+                 sample_prior = TRUE,
+                 chains = 4,
+                 iter = 3000,
+                 warmup = 500, 
+                 cores = 4)
+
+summary(fem_model)
+
+
+#Determining male ITLN1 concentration
+mal_data = resonable_data %>% filter (sex == "M")
+
+mal_model <- brm(mean ~ 1,
+                 data = mal_data, 
+                 family = gaussian, 
+                 sample_prior = TRUE,
+                 chains = 4,
+                 iter = 3000,
+                 warmup = 500, 
+                 cores = 4)
+
+summary(mal_model)
+
+
+#Determining ITLN1 concentration of individuals with a body mass index < 25
+wei_data = resonable_data 
+wei_data$bmi_mean = as.numeric(wei_data$bmi_mean)
+wei_data$bmi_sd = as.numeric(wei_data$bmi_sd)
+wei_data$bmi = wei_data$bmi_mean + wei_data$bmi_sd
+
+nor_wei_data = wei_data %>% filter (bmi <= 25)
+
+nor_wei_model <- brm(mean ~ 1,
+                     data = nor_wei_data, 
+                     family = gaussian, 
+                     sample_prior = TRUE,
+                     chains = 4,
+                     iter = 3000,
+                     warmup = 500, 
+                     cores = 4)
+
+summary(nor_wei_model)
+
+
+#Determining ITLN1 concentration of individuals with a body mass index > 25 (i.e., overweight and obese)
+ov_ob_data = wei_data %>% filter (bmi > 25)
+
+ov_ob_model <- brm(mean ~ 1,
+                   data = ov_ob_data, 
+                   family = gaussian, 
+                   sample_prior = TRUE,
+                   chains = 4,
+                   iter = 3000,
+                   warmup = 500, 
+                   cores = 4)
+
+summary(ov_ob_model)
